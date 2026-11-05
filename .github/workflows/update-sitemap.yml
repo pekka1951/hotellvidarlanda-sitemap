@@ -1,0 +1,129 @@
+
+name: Uppdatera sitemap automatiskt
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-sitemap:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Hamta filer
+        uses: actions/checkout@v4
+
+      - name: Installera Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Installera bibliotek
+        run: pip install requests beautifulsoup4
+
+      - name: Skapa uppdaterad sitemap
+        run: |
+          python - <<'PY'
+          import requests
+          import xml.etree.ElementTree as ET
+          from bs4 import BeautifulSoup
+          from collections import deque
+          from urllib.parse import urljoin, urlsplit, urldefrag
+
+          BASE = "https://www.hotellvidarlanda.se/"
+          HOST = "www.hotellvidarlanda.se"
+          MAX_PAGES = 300
+
+          session = requests.Session()
+          session.headers["User-Agent"] = "SitemapUpdater/1.0"
+
+          queue = deque([BASE])
+          visited = set()
+          valid = set()
+
+          while queue and len(visited) < MAX_PAGES:
+              url = queue.popleft()
+              if url in visited:
+                  continue
+              visited.add(url)
+
+              try:
+                  response = session.get(url, timeout=20)
+                  response.raise_for_status()
+
+                  if "text/html" not in response.headers.get(
+                      "Content-Type", ""
+                  ):
+                      continue
+
+                  soup = BeautifulSoup(
+                      response.text, "html.parser"
+                  )
+                  valid.add(url)
+
+                  for link in soup.select("a[href]"):
+                      target = urljoin(url, link["href"])
+                      target = urldefrag(target)[0]
+                      parts = urlsplit(target)
+
+                      if (
+                          parts.scheme == "https"
+                          and parts.hostname == HOST
+                      ):
+                          path = parts.path or "/"
+                          normalized = (
+                              f"https://{HOST}{path}"
+                          )
+                          if normalized not in visited:
+                              queue.append(normalized)
+
+              except requests.RequestException as error:
+                  print(f"Kunde inte läsa {url}: {error}")
+
+          if len(valid) < 40:
+              raise RuntimeError(
+                  "For fa sidor hittades. "
+                  "Befintlig sitemap behalls."
+              )
+
+          ET.register_namespace(
+              "", "http://www.sitemaps.org/schemas/sitemap/0.9"
+          )
+          root = ET.Element(
+              "{http://www.sitemaps.org/schemas/sitemap/0.9}urlset"
+          )
+
+          for url in sorted(valid):
+              entry = ET.SubElement(
+                  root,
+                  "{http://www.sitemaps.org/schemas/sitemap/0.9}url"
+              )
+              ET.SubElement(
+                  entry,
+                  "{http://www.sitemaps.org/schemas/sitemap/0.9}loc"
+              ).text = url
+
+          tree = ET.ElementTree(root)
+          ET.indent(tree, space="  ")
+          tree.write(
+              "sitemap.xml",
+              encoding="utf-8",
+              xml_declaration=True
+          )
+
+          print(f"Sitemap skapad med {len(valid)} sidor.")
+          PY
+
+      - name: Spara om sitemap har andrats
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sitemap.xml
+          if ! git diff --cached --quiet; then
+            git commit -m "Automatisk uppdatering av sitemap"
+            git push
+          fi
