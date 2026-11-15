@@ -52,6 +52,12 @@
     <loc>https://www.hotellvidarlanda.se/hotell-med-transfer</loc>
   </url>
   <url>
+    <loc>https://www.hotellvidarlanda.se/hotell-nära-sevärdheter</loc>
+  </url>
+  <url>
+    <loc>https://www.hotellvidarlanda.se/hotell-nära-sevärdheter/stockholm</loc>
+  </url>
+  <url>
     <loc>https://www.hotellvidarlanda.se/hotell-vid-arlanda-terminaler</loc>
   </url>
   <url>
@@ -178,9 +184,9 @@
     <loc>https://www.hotellvidarlanda.se/spahotell-västkusten</loc>
   </url>
   <url>
-    <loc>https://www.hotellvidarlanda.se/startsida</loc>
+    <loc>https://www.hotellvidarlanda.se/stadshotell</loc>
   </url>
   <url>
-    <loc>https://www.hotellvidarlanda.se/svenska-stadshotell</loc>
+    <loc>https://www.hotellvidarlanda.se/startsida</loc>
   </url>
 </urlset>
